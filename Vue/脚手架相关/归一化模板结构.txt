@@ -1,0 +1,78 @@
+// {text: '', code: ''}
+{
+  ...
+  "医院名称(查)": {
+    value: "",
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  "医院名称": {
+    value: "",
+    items: [],
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  ...
+  "科室名称(查)": {
+    value: "",
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  "科室名称": {
+    value: "",
+    items: [],
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  ...
+  "主要诊断(查)": {
+    value: "",
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  "主要诊断": {
+    value: "",
+    items: [],
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  },
+  "主要ICD诊断": {
+    value: "",
+    items: [],
+    file: {
+      id: "",
+      labelName: "",
+      url: ""
+    }
+  }
+}
+
+"主要诊断": {
+  value: "霍乱",
+  items: [
+    {code: "A00", text: "霍乱"}
+  ],
+  file: {
+    id: "",
+    labelName: "",
+    url: ""
+  }
+}
