@@ -295,7 +295,7 @@ Vue.use(Directives)
 - 实现页面水印`v-waterMarker`
 - 拖拽指令`v-draggable`
 
-## v-copy
+## `v-copy`
 
 需求：实现一键复制文本内容，用于鼠标右键粘贴。
 
@@ -381,6 +381,277 @@ export default copy
 思路：
 
 1. 创建一个计时器， n秒后执行函数
+2. 当用户按下按钮触发mousedown事件，启动计时器；用户松开按钮时调用mouseout事件
+3. 如果mouseup事件2秒内被触发，就清除计时器，当一个普通的点击事件
+4. 如果计时器没有在2秒内清除，则判定为一次长按，可以执行关联的函数
+5. 在移动端要考虑touchstart，touchend事件
+
+```js
+const longpress = {
+    bind: function (el, binding, vNode) {
+        if (typeof binding.value !== 'function') {
+            throw 'callback must be a function'
+        }
+
+        // 定义变量
+        let pressTimer = null
+
+        // 创建计时器
+        let start = (e) => {
+            if (e.type === 'click' && e.button !== 0) {
+                return
+            }
+            if (pressTimer === null) {
+                pressTimer = setTimeout(() => {
+                    handler()
+                }, 2000)
+            }
+        }
+
+        // 取消计时器
+        let cancel = (e) => {
+            if (pressTimer !== null) {
+                clearTimeout(pressTimer)
+                pressTimer = null
+            }
+        }
+
+        // 运行函数
+        const handler = (e) => {
+            binding.value(e)
+        }
+
+        // 添加事件监听
+        el.addEventListener('mousedown', atart)
+        el.addEventListener('touchstart', start)
+
+        // 取消计时器
+        el.addEventListener('click', cancel)
+        el.addEventListener('mouseout', cancel)
+        el.addEventListener('touchend', cancel)
+        el.addEventListener('touchcancel', cancel)
+    },
+
+
+    // 当传进来的值更新的时候触发
+    componentUpdated: (el, { value }) => {
+        el.$value = value
+    },
+
+    unbind: (el) => {
+        el.removeEventListener('click', handler)
+    }
+}
+```
+
+使用： 给`DOM`加上`v-longpress`及回调函数即可
+
+```html
+<template>
+	<button v-longpress="longpress">
+        长按
+    </button>
+</template>
+
+<script>
+export default {
+    method: {
+        longpress () {
+            alert('长按')
+        }
+    }
+}
+</script>
+```
+
+## `v-dedbounce`
+
+背景：在开发中，有些提交保存按钮有时候会在短时间内被点击多次，这样就会出现重复请求接口，造成数据的混乱，比如新增表单的提交接口，多次点击就会多条重复的数据。
+
+需求：防止按钮在短时间内多次点击，使用防抖数据限制规定事件内只能点击一次
+
+思路：
+
+1. 定义一个延迟执行的方法，如果在延迟事件内再调用该方法，则重新计算执行时间。
+2. 将时间绑定在click方法上。
+
+```js
+const debounce = {
+    inserted: function (el, binding) {
+        let timer
+        el.addEventListener('keyup', () => {
+            if (timer) {
+                clearTimeout(timer)
+            }
+
+            timer = setTimeout(() => {
+                binding.value()
+            }, 1000)
+        })
+    }
+}
+
+export default debounce
+```
+
+使用： 给`DOM`加上`v-debounce`及回调函数即可
+
+```html
+<template>
+	<button v-debounce="debounceClick">
+        防抖
+    </button>
+</template>
+
+<script>
+export default {
+    methods: {
+        debounceClick () {
+            console.log('只触发一次')
+        }
+    }
+}
+</script>
+```
+
+## `v-emoji`
+
+背景：开发中遇到的表单输入，往往会有对输入内容的限制，比如不能输入表情和特殊字符，只能输入数字或字母等
+
+我们常规方法是在每一个表单的`on-change`事件上做处理
+
+```html
+<template>
+	<input type="text" v-model="note" @change="vaidateEmoji"/>
+</template>
+
+<script>
+export default {
+    methods: {
+        vaidateEmoji () {
+            let reg = /[^u4E00-u9FA5|d|a-zA-Z|rns,.?!,。？！…-&$=()-+/*{}[]]|s/g
+            this.note = this.note.replace(reg, '')
+        }
+    }
+}
+</script>
+```
+
+这样代码量比较大而且不好维护，所以我们需要自定义一个指令来解决问题。
+
+需求：根据正则表达式，设计自定义处理表单输入规则的指令，下面以禁止输入表情和特殊字符为例。
+
+```js
+let findEle = (parent, type) => {
+    return parent.tagName.toLowerCase() = type ? parent : parent.querySelecotor(type)
+}
+
+const trigger = (el, type) => {
+    const e = document.createEvent('HTMLevents')
+    e.initEvent(type, true, true)
+    el.dispatchEvent(e)
+}
+
+const emoji = {
+    bind: function (el, binding, vnode) {
+        // 正则规则可根据需求自定义
+        var regRule = /[^u4E00-u9FA5|d|a-zA-Z|rns,.?!，。？！…—&$=()-+/*{}[]]|s/g
+        let $inp = findEle(el, 'input')
+        el.$inp = $inp
+        $inp.handle = function () {
+          let val = $inp.value
+          $inp.value = val.replace(regRule, '')
+     
+          trigger($inp, 'input')
+        }
+        $inp.addEventListener('keyup', $inp.handle)
+      },
+      unbind: function (el) {
+        el.$inp.removeEventListener('keyup', el.$inp.handle)
+      }
+}
+
+export default emoji
+```
+
+使用：将需要校验的输入框加上 v-emoji 即可
+
+```html
+<template>
+  <input type="text" v-model="note" v-emoji />
+</template>
+```
+
+# 为什么不建议用index做key，为什么不建议用随机数做key？
+
+用`index`和用`随机数`原理相同， 每次渲染都会改变，会很消耗性能
+
+# `nextTick`的用处
+
+我们修改N个变量，那每一次修改并不是就会更新一次。`vue`采用的是`异步更新`的策略，通俗点来说就是：`同一事件循环内`多次修改，会`统一`进行一次`视图更新`，这样才能节省性能
+
+如
+
+```
+<div ref="testDiv">{{name}}</div>
+
+name: '小林'
+
+this.name = '林三心'
+console.log(this.$refs.testDiv.innerHTML) // 这里打印为 ‘小林’
+```
+
+因为`vue`是`异步更新`，所以数据一更新，视图缺没有更新，所以拿到的还是上一次的旧数据，那么想要拿到最新视图怎么办
+
+```
+this.name = '林三心'
+this.$nextTick(() => {
+    console.log(this.$refs.testDiv.innerHTML) // 林三心
+})
+```
+
+# `vue`的`SSR`是什么？有什么好处
+
+- `SSR`就是服务端渲染
+- 基于`nodejs serve`服务环境开发，所有`html`代码在服务端渲染
+- 数据返回给前端，然后前端进行“激活”，即可成为浏览器识别的html代码
+- `SSR`首次加载更快，有更好的用户体验，有更好的seo优化，因为爬虫能看到整个页面的内容，如果是vue项目，由于数据还要经过解析，就造成爬虫并不会等待你的数据加载完成，所以其实vue项目的seo体验并不是很好。
+
+# `Vue`响应式是怎么实现的？
+
+整体思路是数据劫持 + 观察者模式
+
+对象内部通过`defineReactive`方法，使用`Object.defineProperty`将属性进行劫持（只会劫持已存在的属性），数组则是通过重写数组方法来实现。当页面使用对应属性时，每个属性都拥有自己的`dep`属性，春芳他所依赖的`watcher`（依赖收集），当属性变化后会通知自己对于应的`watcher`去更新（派发更新）
+
+# 为什么只对对象劫持，而要对数组进行方法重写
+
+因为对象最多也就几十个属性，拦截起来数量不多，但是数组可能会有几百几千项，拦截起来非常消耗性能，所以直接重写数组原型上的方法，是比较节省性能的方案。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
